@@ -11,6 +11,7 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Pages\Page;
 
 class CheckElements extends Page implements HasForms
@@ -47,7 +48,7 @@ class CheckElements extends Page implements HasForms
                         ->label("Elements")
                         ->schema(function (Get $get) {
                             if ($get("id")) {
-                                return $this->getElements($get("id"));
+                                return self::getElements($get("id"));
                             } else {
                                 return [];
                             }
@@ -65,7 +66,7 @@ class CheckElements extends Page implements HasForms
             ->model(ModuleType::class);
     }
 
-    public function getElements(int $module_type): array
+    public static function getElements(int $module_type): array
     {
         $array = [];
 
@@ -76,7 +77,12 @@ class CheckElements extends Page implements HasForms
             foreach ($elements as $element) {
                 $array[] = TextInput::make("name" . $element->id)
                     ->label("Name")
-                    ->default($element->name)
+                    ->afterStateUpdated(
+                        fn(Set $set) => $set(
+                            "name" . $element->id,
+                            $element->name
+                        )
+                    )
                     ->live()
                     ->readOnly()
                     ->columnSpan([
@@ -87,9 +93,12 @@ class CheckElements extends Page implements HasForms
                     "module_type_quantity" . $element->id
                 )
                     ->label("Qty (ModuleType)")
-                    ->default(
-                        $module_type->elements->find($element->id)->pivot
-                            ->quantity
+                    ->afterStateUpdated(
+                        fn(Set $set) => $set(
+                            "module_type_quantity" . $element->id,
+                            $module_type->elements->find($element->id)->pivot
+                                ->quantity
+                        )
                     )
                     ->live()
                     ->readOnly()
@@ -99,7 +108,12 @@ class CheckElements extends Page implements HasForms
 
                 $array[] = TextInput::make("total_quantity" . $element->id)
                     ->label("Qty (Storage)")
-                    ->default($element->quantity)
+                    ->afterStateUpdated(
+                        fn(Set $set) => $set(
+                            "total_quantity" . $element->id,
+                            $element->quantity
+                        )
+                    )
                     ->live()
                     ->readOnly()
                     ->columnSpan([
