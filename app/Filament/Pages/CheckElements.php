@@ -34,26 +34,31 @@ class CheckElements extends Page implements HasForms
         return $form
             ->schema([
                 Section::make()->schema([
-                    Select::make("id")
-                        ->label("Module Type")
+                    Select::make('id')
+                        ->label('Module Type')
                         ->required()
                         ->options(function () {
-                            return ModuleType::all()->pluck("full_name", "id");
+                            return ModuleType::all()->pluck('full_name', 'id');
                         })
-                        //->default(1)
                         ->live()
                         ->searchable()
-                        ->preload(),
-                    Fieldset::make("elements")
-                        ->label("Elements")
-                        ->schema(function (Get $get) {
-                            if ($get("id")) {
-                                return self::getElements($get("id"));
-                            } else {
-                                return [];
-                            }
-                        })
+                        ->preload()
+                        ->afterStateUpdated(function (Select $component) {
+                                $fieldset = $component
+                                    ->getContainer()
+                                    ->getComponent('dynamicTypeFields');
+
+                                if (!is_null($fieldset) && $fieldset->hasChildComponentContainer()) {
+                                    $fieldset
+                                        ->getChildComponentContainer()
+                                        ->fill();
+                                }
+                    }),
+                    Fieldset::make('elements')
+                        ->label('Elements')
+                        ->schema(fn(Get $get) => $get("id") ? self::getElements($get("id")) : [])
                         ->columns(10)
+                        ->key('dynamicTypeFields')
                         ->hidden(
                             fn(Get $get): bool => !$get("id") ||
                                 ModuleType::findOrFail(
@@ -62,11 +67,11 @@ class CheckElements extends Page implements HasForms
                         ),
                 ]),
             ])
-            ->statePath("data")
+            ->statePath('data')
             ->model(ModuleType::class);
     }
 
-    public static function getElements(int $module_type): array
+    public static function getElements(?int $module_type): array
     {
         $array = [];
 
@@ -75,59 +80,42 @@ class CheckElements extends Page implements HasForms
             $elements = $module_type->elements;
 
             foreach ($elements as $element) {
-                $array[] = TextInput::make("name" . $element->id)
-                    ->label("Name")
-                    ->afterStateUpdated(
-                        fn(Set $set) => $set(
-                            "name" . $element->id,
-                            $element->name
-                        )
-                    )
-                    ->live()
+                $array[] = TextInput::make('name'.$element->id)
+                    ->label('Name')
+                    ->default($element->name)
                     ->readOnly()
                     ->columnSpan([
-                        "md" => 4,
+                        'md' => 4,
                     ]);
 
                 $array[] = TextInput::make(
-                    "module_type_quantity" . $element->id
+                    'module_type_quantity'.$element->id
                 )
-                    ->label("Qty (ModuleType)")
-                    ->afterStateUpdated(
-                        fn(Set $set) => $set(
-                            "module_type_quantity" . $element->id,
-                            $module_type->elements->find($element->id)->pivot
-                                ->quantity
-                        )
+                    ->label('Qty (ModuleType)')
+                    ->default(
+                        $module_type->elements->find($element->id)->pivot
+                            ->quantity
                     )
-                    ->live()
                     ->readOnly()
                     ->columnSpan([
-                        "md" => 2,
+                        'md' => 2,
                     ]);
 
-                $array[] = TextInput::make("total_quantity" . $element->id)
-                    ->label("Qty (Storage)")
-                    ->afterStateUpdated(
-                        fn(Set $set) => $set(
-                            "total_quantity" . $element->id,
-                            $element->quantity
-                        )
-                    )
-                    ->live()
+                $array[] = TextInput::make('total_quantity'.$element->id)
+                    ->label('Qty (Storage)')
+                    ->default($element->quantity)
                     ->readOnly()
                     ->columnSpan([
-                        "md" => 2,
+                        'md' => 2,
                     ]);
 
-                $array[] = TextInput::make("reserve_quantity" . $element->id)
-                    ->label("Qty (Reserve)")
-                    ->live()
+                $array[] = TextInput::make('reserve_quantity'.$element->id)
+                    ->label('Qty (Reserve)')
                     ->numeric()
                     ->minValue(1)
                     ->maxValue(32767)
                     ->columnSpan([
-                        "md" => 2,
+                        'md' => 2,
                     ]);
             }
         }
